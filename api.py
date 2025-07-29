@@ -57,23 +57,29 @@ def generate_temp_token() -> str:
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify the provided bearer token."""
-    token = credentials.credentials
-    if not credentials or credentials.scheme != "Bearer" or token not in temp_tokens:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing authentication token.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if datetime.utcnow() > temp_tokens[token]:
-        del temp_tokens[token]  # Clean up expired token
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return credentials
+    if credentials and credentials.scheme == "Bearer":
+        token = credentials.credentials
+        # Check against the static bearer token first
+        if BEARER_TOKEN and token == BEARER_TOKEN:
+            return credentials
+        
+        # Check against temporary tokens
+        if token in temp_tokens:
+            if datetime.utcnow() <= temp_tokens[token]:
+                return credentials
+            else:
+                del temp_tokens[token]  # Clean up expired token
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has expired.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or missing authentication token.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 # === Pydantic Models ===
 class Token(BaseModel):
@@ -238,10 +244,11 @@ def handle_rag_request(payload: HackRxInput, token: str = Depends(verify_token))
             from langchain.schema import Document
             
             relevant_docs = []
-            if query_response.get("matches"):
-                for match in query_response.get("matches"):
-                    if match.get("metadata") and "text" in match.get("metadata"):
-                        relevant_docs.append(Document(page_content=match.get("metadata")["text"]))
+            matches = getattr(query_response, 'matches', [])
+            if matches:
+                for match in matches:
+                    if hasattr(match, 'metadata') and match.metadata and 'text' in match.metadata:
+                        relevant_docs.append(Document(page_content=match.metadata['text']))
 
             if not relevant_docs:
                 logger.warning(f"No relevant documents found for question: {q}")
