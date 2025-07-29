@@ -92,22 +92,13 @@ class HackRxOutput(BaseModel):
 embedding_model = None
 MODEL_CACHE_PATH = "./embedding_model_cache"
 
-@app.on_event("startup")
-async def startup_event():
-    """Load the embedding model at application startup."""
-    global embedding_model
-    logger.info("Loading embedding model...")
-    embedding_model = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        cache_folder=MODEL_CACHE_PATH
-    )
-    logger.info("Embedding model loaded successfully.")
-
 def get_embedding_model():
-    """Returns the pre-loaded embedding model."""
+    global embedding_model
     if embedding_model is None:
-        logger.error("Embedding model not loaded!")
-        raise HTTPException(status_code=500, detail="Embedding model is not available.")
+        embedding_model = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            cache_folder=MODEL_CACHE_PATH
+        )
     return embedding_model
 
 llm = ChatGroq(
