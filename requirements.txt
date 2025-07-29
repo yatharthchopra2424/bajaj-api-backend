@@ -1,0 +1,16 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+fastapi
+uvicorn
+gunicorn
+requests
+pydantic
+python-dotenv
+langchain
+langchain-community
+langchain-core
+langchain-groq
+sentence-transformers
+PyMuPDF
+pinecone
+nltk

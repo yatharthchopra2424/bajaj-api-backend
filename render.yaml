@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: policy-qa-api
+    runtime: python
+    plan: free # Or your preferred plan
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -w 1 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT api:app"
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: BEARER_TOKEN
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
