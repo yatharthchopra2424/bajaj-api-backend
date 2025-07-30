@@ -4,6 +4,7 @@ import requests
 import tempfile
 import logging
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, SecretStr
 from typing import List, Dict
 from dotenv import load_dotenv
@@ -30,6 +31,14 @@ app = FastAPI(
     title="Policy Q&A API",
     description="An API to answer questions about policy documents using RAG.",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # === Logger Setup ===
