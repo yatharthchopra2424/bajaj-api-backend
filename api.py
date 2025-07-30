@@ -3,11 +3,7 @@ import hashlib
 import requests
 import tempfile
 import logging
-import secrets
-from datetime import datetime, timedelta
-
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, SecretStr
 from typing import List, Dict
 from dotenv import load_dotenv
@@ -26,7 +22,6 @@ from pinecone import Pinecone
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-BEARER_TOKEN = os.getenv("BEARER_TOKEN")
 PINECONE_HOST = os.getenv("PINECONE_HOST")
 PINECONE_INDEX_NAME = "hackrx-rag-index"
 
@@ -36,51 +31,12 @@ app = FastAPI(
     description="An API to answer questions about policy documents using RAG.",
     version="1.0.0"
 )
-security = HTTPBearer()
 
 # === Logger Setup ===
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# === Temporary Token Store ===
-temp_tokens: Dict[str, datetime] = {}
-TOKEN_EXPIRATION_MINUTES = 15
-
-# === Authentication Dependency ===
-def generate_temp_token() -> str:
-    """Generates a secure temporary token and stores it with an expiration timestamp."""
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(minutes=TOKEN_EXPIRATION_MINUTES)
-    temp_tokens[token] = expires_at
-    logger.info(f"Generated new temporary token: {token}, expires at: {expires_at.isoformat()}")
-    return token
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Verify the provided bearer token."""
-    token = credentials.credentials
-    if not credentials or credentials.scheme != "Bearer" or token not in temp_tokens:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing authentication token.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if datetime.utcnow() > temp_tokens[token]:
-        del temp_tokens[token]  # Clean up expired token
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return credentials
-
 # === Pydantic Models ===
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    expires_in: int
-
 class HackRxInput(BaseModel):
     documents: str  # Publicly accessible PDF URL
     questions: List[str]
@@ -150,20 +106,8 @@ def read_root():
     """Health check endpoint to confirm the API is running."""
     return {"status": "ok", "message": "Welcome to the Policy Q&A API!"}
 
-@app.post("/hackrx/get-token", response_model=Token, tags=["Authentication"])
-def get_temp_token():
-    """
-    Generates and returns a temporary access token.
-    """
-    token = generate_temp_token()
-    return {
-        "access_token": token,
-        "token_type": "Bearer",
-        "expires_in": TOKEN_EXPIRATION_MINUTES * 60
-    }
-
 @app.post("/hackrx/run", response_model=HackRxOutput, tags=["Q&A"])
-def handle_rag_request(payload: HackRxInput, token: str = Depends(verify_token)):
+def handle_rag_request(payload: HackRxInput):
     """
     Processes a PDF document to answer a list of questions using a RAG pipeline.
     Requires Bearer token authentication.
