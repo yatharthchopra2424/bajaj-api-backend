@@ -104,7 +104,8 @@ def get_embedding_model():
 llm = ChatGroq(
     api_key=SecretStr(GROQ_API_KEY) if GROQ_API_KEY else None,
     model="gemma2-9b-it",
-    temperature=0.1,
+    temperature=0.2,
+    model_kwargs={"max_completion_tokens": 200}
 )
 
 # === QA Prompt Template ===
@@ -113,7 +114,7 @@ qa_prompt = PromptTemplate(
     template="""
 You are an expert AI legal assistant specializing in Indian insurance policies.
 Your task is to answer the user's question with extreme precision based ONLY on the provided context from the policy document.
-If no context is provided, answer the question based on your own knowledge.
+If no context is provided, answer the question based on your own knowledge.Dont use \n in output response.
 *Instructions:*
 1.  *Strictly Contextual:* Your answer MUST be derived exclusively from the text provided in the 'Context' section. Do not use any external knowledge.
 2.  *Concise and Formal:* Provide a direct, professional answer. Limit your response to 1-3 clear sentences.
