@@ -4,12 +4,21 @@ import './App.css';
 function App() {
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState(() => {
+    const savedLogs = localStorage.getItem('apiLogs');
+    return savedLogs ? JSON.parse(savedLogs) : [];
+  });
   const [timeLeft, setTimeLeft] = useState(13 * 60);
 
+  // Function to send the request and log it
   const sendRequest = async () => {
-    setTimeLeft(13 * 60);
-    setLogs(prevLogs => [...prevLogs, `Request sent at ${new Date().toLocaleTimeString()}`]);
+    const newLog = `Request sent at ${new Date().toLocaleTimeString()}`;
+    setLogs(prevLogs => {
+      const updatedLogs = [...prevLogs, newLog];
+      localStorage.setItem('apiLogs', JSON.stringify(updatedLogs));
+      return updatedLogs;
+    });
+
     try {
       const res = await fetch('https://bajaj-api-backend-fv5w.onrender.com/hackrx/run', {
         method: 'POST',
@@ -32,21 +41,42 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      sendRequest();
-    }, 13 * 60 * 1000); // 13 minutes
+  // Function to start a new timer cycle
+  const startNewTimerCycle = () => {
+    const endTime = Date.now() + 13 * 60 * 1000;
+    localStorage.setItem('timerEndTime', endTime);
+    setTimeLeft(13 * 60);
+    sendRequest();
+  };
 
-    return () => clearInterval(interval);
-  }, []);
-
+  // Effect for the main timer logic
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prevTime => (prevTime > 0 ? prevTime - 1 : 0));
+    const endTime = localStorage.getItem('timerEndTime');
+    if (!endTime || Date.now() > parseInt(endTime, 10)) {
+      // If no timer is set or it has expired, start a new cycle.
+      startNewTimerCycle();
+    }
+
+    const timerInterval = setInterval(() => {
+      const storedEndTime = localStorage.getItem('timerEndTime');
+      if (storedEndTime) {
+        const remaining = Math.floor((parseInt(storedEndTime, 10) - Date.now()) / 1000);
+        if (remaining > 0) {
+          setTimeLeft(remaining);
+        } else {
+          // Time's up, start a new cycle
+          startNewTimerCycle();
+        }
+      }
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => clearInterval(timerInterval);
   }, []);
+
+  // Manual request handler
+  const handleManualRequest = () => {
+    startNewTimerCycle();
+  };
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -59,7 +89,7 @@ function App() {
       <header className="App-header">
         <h1>Bajaj API Frontend</h1>
         <p>Time until next request: {formatTime(timeLeft)}</p>
-        <button onClick={sendRequest}>Send Request</button>
+        <button onClick={handleManualRequest}>Send Request Now</button>
         {response && (
           <div>
             <h2>Response:</h2>
