@@ -104,8 +104,7 @@ def get_embedding_model():
 llm = ChatGroq(
     api_key=SecretStr(GROQ_API_KEY) if GROQ_API_KEY else None,
     model="gemma2-9b-it",
-    temperature=0.2,
-    model_kwargs={"max_completion_tokens": 200}
+    temperature=0.2
 )
 
 # === QA Prompt Template ===
