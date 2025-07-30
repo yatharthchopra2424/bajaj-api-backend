@@ -5,8 +5,10 @@ function App() {
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [timeLeft, setTimeLeft] = useState(13 * 60);
 
   const sendRequest = async () => {
+    setTimeLeft(13 * 60);
     setLogs(prevLogs => [...prevLogs, `Request sent at ${new Date().toLocaleTimeString()}`]);
     try {
       const res = await fetch('https://bajaj-api-backend-fv5w.onrender.com/hackrx/run', {
@@ -38,10 +40,25 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prevTime => (prevTime > 0 ? prevTime - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>Bajaj API Frontend</h1>
+        <p>Time until next request: {formatTime(timeLeft)}</p>
         <button onClick={sendRequest}>Send Request</button>
         {response && (
           <div>
